@@ -1,18 +1,48 @@
 open System
 
-let intToBitList value =
-    let rec getBits i =
-        match i with
-        | 0 -> [ 0 ]
-        | 1 -> [ 1 ]
-        | _ -> (i &&& 1) :: getBits (i >>> 1)
+let getBitList i =
+    eprintf "%c " (i |> char)
+    seq {
+        for offset in 6 .. -1 .. 0 do
+            let mask = 1 <<< offset
+            let bit = match (i &&& mask) with
+                      | 0 -> 0
+                      | _ -> 1
+            eprintf "%d" bit
+            yield bit
+        eprintf "\n"
+    } |> List.ofSeq
 
-    let bits =
-        match getBits value with
-        | l when l.Length = 7 -> l
-        | l -> l @ List.init (7 - l.Length) (fun _ -> 0)
+let getBitGroups l =
+    let accumulateBits i acc =
+        match acc with
+        | [] -> [ (i, 1) ]
+        | (i', c)::t when i' = i -> (i', c + 1) :: t
+        | _ -> (i, 1) :: acc
 
-    List.rev bits
+    let rec groupBits acc l' =
+        match l' with
+        | [] -> acc
+        | h::t -> groupBits (accumulateBits h acc) t
 
-let x = Console.In.ReadLine().ToCharArray()
-    |> Array.map (fun c -> intToBitList (c |> int))
+    eprintfn "%A" l
+    (groupBits [] l)  |> List.rev
+
+let bitGroupToString g =
+    let (digit, count) = g
+    let prefix =
+        match digit with
+        | 0 -> "00 "
+        | 1 -> "0 "
+        | _ -> raise <| new ArgumentOutOfRangeException("g")
+
+    prefix + String.init count (fun i -> "0")
+
+
+Console.In.ReadLine().ToCharArray()
+|> Array.map (fun c -> c |> int |> getBitList)
+|> List.concat
+|> getBitGroups
+|> List.map bitGroupToString
+|> List.reduce (fun acc s -> acc + " " + s)
+|> Console.Out.WriteLine
